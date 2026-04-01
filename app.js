@@ -100,6 +100,14 @@ const domainIcons = {
   News: "✦",
 };
 
+const artworkPalette = {
+  Video: ["#ff9f6e", "#6d2d1e"],
+  Music: ["#5ad1cb", "#163c40"],
+  Podcast: ["#ffd97a", "#60430f"],
+  Movie: ["#9d8cff", "#2b214f"],
+  News: ["#80d58a", "#173620"],
+};
+
 const interestOptions = ["tech", "business", "sports", "music", "movies", "news", "design"];
 const typeOptions = ["All", "Video", "Music", "Podcast", "Movie", "News"];
 const moodOptions = ["All", "chill", "focus", "energetic"];
@@ -132,7 +140,7 @@ const state = {
   dislikedIds: new Set(),
   savedIds: new Set(),
   hiddenIds: new Set(),
-  theme: "light",
+  theme: "dark",
 };
 
 const interestFilters = document.querySelector("#interestFilters");
@@ -144,6 +152,7 @@ const refreshBtn = document.querySelector("#refreshBtn");
 const heroCta = document.querySelector("#heroCta");
 const themeToggle = document.querySelector("#themeToggle");
 const themeLabel = document.querySelector("#themeLabel");
+const cursorAura = document.querySelector("#cursorAura");
 const liveStatus = document.querySelector("#liveStatus");
 const liveCount = document.querySelector("#liveCount");
 const savedCount = document.querySelector("#savedCount");
@@ -181,6 +190,7 @@ function init() {
   exploreGrid.addEventListener("click", handleGridClick);
   document.addEventListener("click", handleBounceClick, true);
   setupMouseReactiveEffects();
+  setupCursorAura();
 
   loadRecommendations(false);
 }
@@ -337,7 +347,7 @@ function renderSection(container, items, section, emptyMessage) {
     return;
   }
 
-  container.innerHTML = items.map((item) => renderCard(item, section)).join("");
+  container.innerHTML = items.map((item, index) => renderCard(item, section, index)).join("");
 }
 
 function rankSections(catalog) {
@@ -488,16 +498,25 @@ function matchesSearch(item, query) {
   return haystack.includes(query);
 }
 
-function renderCard(item, section) {
+function renderCard(item, section, index = 0) {
   const typeIcon = domainIcons[item.domain] || "•";
   const badge =
     section === "trending" ? `${Math.round(item.trendingScore)} trending` : `${Math.round(item.baseScore || item.exploreScore || 0)} match`;
+  const artwork = getItemImage(item);
 
   return `
-    <article class="recommendation-card mouse-reactive" style="--card-accent: ${domainPalette[item.domain]}">
-      <div class="badge-row">
-        <span class="score-badge ${section === "trending" ? "trending" : ""}">${badge}</span>
-        <span class="tag-badge">${escapeHtml(formatChipLabel(item.primaryTag))}</span>
+    <article class="recommendation-card mouse-reactive" style="--card-accent: ${domainPalette[item.domain]}; --stagger: ${index * 70}ms">
+      <div class="media-shell">
+        <img class="card-image" src="${escapeHtml(artwork)}" alt="${escapeHtml(item.title)} artwork" loading="lazy" />
+        <div class="media-overlay"></div>
+        <div class="media-top">
+          <span class="score-badge ${section === "trending" ? "trending" : ""}">${badge}</span>
+          <span class="tag-badge">${escapeHtml(formatChipLabel(item.primaryTag))}</span>
+        </div>
+        <div class="media-bottom">
+          <span class="type-badge">${typeIcon} ${item.domain}</span>
+          <span class="media-source">${escapeHtml(item.source || "Live source")}</span>
+        </div>
       </div>
 
       <a
@@ -508,13 +527,12 @@ function renderCard(item, section) {
         data-card-action="open"
         data-item-id="${escapeHtml(item.id)}"
       >
-        <div class="card-meta">
-          <span class="type-badge">${typeIcon} ${item.domain}</span>
-          <span>${item.duration} min</span>
-        </div>
         <div>
           <h4>${escapeHtml(item.title)}</h4>
-          <div class="card-meta">${escapeHtml(item.creator)}</div>
+          <div class="card-meta">
+            <span>${escapeHtml(item.creator)}</span>
+            <span>${item.duration} min</span>
+          </div>
         </div>
         <p class="recommendation-copy">${escapeHtml(item.blurb)}</p>
       </a>
@@ -686,7 +704,7 @@ function hydrateState() {
   state.savedIds = new Set(readStoredJson(STORAGE_KEYS.savedIds, []));
   state.hiddenIds = new Set(readStoredJson(STORAGE_KEYS.hiddenIds, []));
   state.selectedInterests = new Set(readStoredJson(STORAGE_KEYS.interests, []));
-  state.theme = readStoredJson(STORAGE_KEYS.theme, "light");
+  state.theme = readStoredJson(STORAGE_KEYS.theme, "dark");
 }
 
 function persistPreferences() {
@@ -735,6 +753,21 @@ function setupMouseReactiveEffects() {
   });
 }
 
+function setupCursorAura() {
+  if (!cursorAura || window.matchMedia("(pointer: coarse)").matches) {
+    return;
+  }
+
+  window.addEventListener("mousemove", (event) => {
+    cursorAura.style.opacity = "1";
+    cursorAura.style.transform = `translate(${event.clientX - 140}px, ${event.clientY - 140}px)`;
+  });
+
+  window.addEventListener("mouseleave", () => {
+    cursorAura.style.opacity = "0";
+  });
+}
+
 function updateReactiveTilt(element, event) {
   const rect = element.getBoundingClientRect();
   const x = (event.clientX - rect.left) / rect.width;
@@ -765,21 +798,77 @@ function findCatalogItem(itemId) {
 }
 
 function normalizeFallback(item) {
+  const primaryTag = item.topics[0] || "tech";
+
   return {
     ...item,
-    primaryTag: item.topics[0] || "tech",
+    primaryTag,
+    image: item.image || createArtwork({ title: item.title, domain: item.domain, tag: primaryTag }),
   };
 }
 
 function normalizeItem(item, domain, sourceLabel) {
+  const topics = mapTopics(item.topics || []);
+  const primaryTag = topics[0] || topicForDomain(domain);
+
   return {
     ...item,
     domain,
     source: item.source || sourceLabel,
-    topics: mapTopics(item.topics || []),
+    topics,
     moods: mapMoods(item.topics || [], domain),
-    primaryTag: mapTopics(item.topics || [])[0] || topicForDomain(domain),
+    primaryTag,
+    image: item.image || createArtwork({ title: item.title, domain, tag: primaryTag }),
   };
+}
+
+function getItemImage(item) {
+  return item.image || createArtwork({ title: item.title, domain: item.domain, tag: item.primaryTag });
+}
+
+function createArtwork({ title, domain, tag }) {
+  const palette = artworkPalette[domain] || ["#ff9f6e", "#1f6f78"];
+  const initials = String(title)
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 2);
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${palette[0]}"/>
+          <stop offset="100%" stop-color="${palette[1]}"/>
+        </linearGradient>
+        <linearGradient id="shine" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(255,255,255,0)"/>
+          <stop offset="50%" stop-color="rgba(255,255,255,0.18)"/>
+          <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+        </linearGradient>
+      </defs>
+      <rect width="800" height="520" rx="40" fill="url(#g)"/>
+      <circle cx="660" cy="90" r="130" fill="rgba(255,255,255,0.12)"/>
+      <circle cx="170" cy="430" r="180" fill="rgba(0,0,0,0.12)"/>
+      <rect x="44" y="44" width="712" height="432" rx="32" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)"/>
+      <rect x="-120" y="0" width="220" height="520" fill="url(#shine)" transform="rotate(12 400 260)"/>
+      <text x="74" y="106" fill="rgba(255,255,255,0.78)" font-family="Arial, sans-serif" font-size="26" letter-spacing="4">${escapeSvgText(
+        domain.toUpperCase()
+      )}</text>
+      <text x="74" y="174" fill="white" font-family="Arial, sans-serif" font-size="96" font-weight="700">${escapeSvgText(
+        initials || domain.charAt(0)
+      )}</text>
+      <text x="74" y="408" fill="rgba(255,255,255,0.92)" font-family="Arial, sans-serif" font-size="36" font-weight="700">${escapeSvgText(
+        formatChipLabel(tag || topicForDomain(domain))
+      )}</text>
+      <text x="74" y="446" fill="rgba(255,255,255,0.72)" font-family="Arial, sans-serif" font-size="24">${escapeSvgText(
+        String(title).slice(0, 34)
+      )}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
 
 function topicForDomain(domain) {
@@ -885,6 +974,15 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function escapeSvgText(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 function clampDuration(value) {
   return Math.max(3, Math.min(180, Math.round(value || 10)));
 }
@@ -926,6 +1024,14 @@ function noveltyFromTitle(title) {
   return 0.35 + (hash % 55) / 100;
 }
 
+function upscaleArtwork(url) {
+  if (!url) {
+    return null;
+  }
+
+  return url.replace(/([0-9]{2,4})x([0-9]{2,4})bb/g, "900x900bb");
+}
+
 function estimateReadTime(title, body) {
   const words = `${title || ""} ${body || ""}`.trim().split(/\s+/).length;
   return clampDuration(Math.max(4, Math.round(words / 180) || 6));
@@ -936,7 +1042,7 @@ async function fetchVideos(primaryQuery, secondaryQuery) {
   url.search = new URLSearchParams({
     search: primaryQuery || secondaryQuery || "technology",
     limit: "14",
-    fields: "id,title,description,url,duration,created_time,tags,channel,views_total",
+    fields: "id,title,description,url,duration,created_time,tags,channel,views_total,thumbnail_720_url,thumbnail_480_url,thumbnail_240_url",
   }).toString();
 
   const response = await fetch(url);
@@ -953,6 +1059,7 @@ async function fetchVideos(primaryQuery, secondaryQuery) {
     topics: inferTopics(`${item.title} ${item.description || ""} ${(item.tags || []).join(" ")}`),
     blurb: truncate(item.description || "Live video recommendation from Dailymotion."),
     url: item.url,
+    image: item.thumbnail_720_url || item.thumbnail_480_url || item.thumbnail_240_url || null,
   }));
 }
 
@@ -979,6 +1086,7 @@ async function fetchMusic(primaryQuery, secondaryQuery) {
     topics: inferTopics(`${primaryQuery} ${secondaryQuery} ${item.primaryGenreName || ""}`),
     blurb: truncate(`Genre: ${item.primaryGenreName || "Music"}${item.collectionName ? ` • Album: ${item.collectionName}` : ""}`),
     url: item.trackViewUrl || item.collectionViewUrl || item.artistViewUrl,
+    image: item.artworkUrl600 || upscaleArtwork(item.artworkUrl100 || item.artworkUrl60 || item.artworkUrl30),
   }));
 }
 
@@ -1005,6 +1113,7 @@ async function fetchPodcasts(primaryQuery, secondaryQuery) {
     topics: inferTopics(`${primaryQuery} ${secondaryQuery} ${item.primaryGenreName || ""}`),
     blurb: truncate(`Podcast recommendation from ${item.artistName || "a creator"} in ${item.primaryGenreName || "spoken audio"}.`),
     url: item.collectionViewUrl,
+    image: item.artworkUrl600 || upscaleArtwork(item.artworkUrl100 || item.artworkUrl60 || item.artworkUrl30),
   }));
 }
 
@@ -1031,6 +1140,7 @@ async function fetchMovies(primaryQuery, secondaryQuery) {
     topics: inferTopics(`${primaryQuery} ${secondaryQuery} ${item.primaryGenreName || ""} ${item.longDescription || ""}`),
     blurb: truncate(item.longDescription || item.shortDescription || `Genre: ${item.primaryGenreName || "Movie"}`),
     url: item.trackViewUrl,
+    image: item.artworkUrl600 || upscaleArtwork(item.artworkUrl100 || item.artworkUrl60 || item.artworkUrl30),
   }));
 }
 
