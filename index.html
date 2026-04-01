@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unify Recs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="#top" aria-label="Unify Recs home">
+          <span class="brand-mark">U</span>
+          <span class="brand-text">
+            <strong>Unify Recs</strong>
+            <small>content discovery</small>
+          </span>
+        </a>
+
+        <form id="searchForm" class="search-shell" role="search">
+          <input
+            id="searchInput"
+            type="search"
+            placeholder="Search tech, podcasts, movies, music..."
+            aria-label="Search recommendations"
+          />
+        </form>
+
+        <div class="topbar-actions">
+          <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme">
+            <span class="theme-toggle-track">
+              <span class="theme-toggle-thumb"></span>
+            </span>
+            <span id="themeLabel">Light</span>
+          </button>
+          <button id="refreshBtn" class="primary-button topbar-button sparkle-button">Refresh Feed</button>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero mouse-reactive" id="top">
+          <div class="hero-copy">
+            <p class="eyebrow">Unified recommendations</p>
+            <h1 class="hero-title">Discover content you’ll love</h1>
+            <button id="heroCta" class="primary-button fizzy-button" type="button">
+              <span>Get Recommendations</span>
+            </button>
+          </div>
+          <div class="hero-status">
+            <div class="mini-stat">
+              <strong id="liveCount">0</strong>
+              <span>live picks</span>
+            </div>
+            <div class="mini-stat">
+              <strong id="savedCount">0</strong>
+              <span>saved</span>
+            </div>
+            <p id="liveStatus" class="status-copy"></p>
+          </div>
+        </section>
+
+        <section class="filters-card">
+          <details id="filterPanel">
+            <summary>
+              <span>Filters</span>
+              <small>optional</small>
+            </summary>
+
+            <div class="filter-stack">
+              <div class="filter-group">
+                <label>Interests</label>
+                <div id="interestFilters" class="chip-row"></div>
+              </div>
+
+              <div class="filter-group">
+                <label>Content type</label>
+                <div id="typeFilters" class="chip-row"></div>
+              </div>
+
+              <div class="filter-group">
+                <label>Mood</label>
+                <div id="moodFilters" class="chip-row"></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <section class="feed-shell" id="feed">
+          <div class="feed-header">
+            <div>
+              <p class="eyebrow">Your feed</p>
+              <h2>Recommendations</h2>
+            </div>
+            <p id="feedSummary" class="feed-summary"></p>
+          </div>
+
+          <div id="emptyState" class="empty-state" hidden>
+            <h3>Select your interests to get started</h3>
+            <p>Pick a few interests above and the feed will personalize instantly.</p>
+          </div>
+
+          <section class="feed-section">
+            <div class="section-title">
+              <h3>🔥 Trending</h3>
+              <p id="trendingSummary"></p>
+            </div>
+            <div id="trendingGrid" class="card-grid"></div>
+          </section>
+
+          <section class="feed-section">
+            <div class="section-title">
+              <h3>🎯 Based on You</h3>
+              <p id="basedSummary"></p>
+            </div>
+            <div id="basedGrid" class="card-grid"></div>
+          </section>
+
+          <section class="feed-section">
+            <div class="section-title">
+              <h3>🌐 Explore New</h3>
+              <p id="exploreSummary"></p>
+            </div>
+            <div id="exploreGrid" class="card-grid"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
